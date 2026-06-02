@@ -1,30 +1,849 @@
-exports.handler = async function(event, context) {
-  if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: 'Method Not Allowed' };
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SafeNest — Baby Goods Safety Directory</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --sage: #4a7c6f; --sage-light: #e8f2ef; --sage-dark: #2d5048; --sage-mid: #3d6b5e;
+    --amber: #c8892a; --amber-light: #fdf3e3;
+    --red: #c0392b; --red-light: #fdf0ef;
+    --green: #2d7a4f; --green-light: #edf7f2;
+    --text: #1a1e1c; --text-muted: #5a6b64; --text-light: #8a9b94;
+    --border: #dde8e4; --bg: #f4f8f6; --card: #ffffff;
+    --radius: 12px; --radius-sm: 8px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 24px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04);
+  }
+  html { font-size: 16px; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; line-height: 1.5; }
+
+  /* LAYOUT */
+  .page { max-width: 720px; margin: 0 auto; padding: 2rem 1rem 4rem; }
+  .app-card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow-md); overflow: hidden; border: 1px solid var(--border); }
+
+  /* HEADER */
+  .app-header { background: var(--sage-dark); padding: 2rem 2rem 1.75rem; position: relative; overflow: hidden; }
+  .app-header::before { content: ''; position: absolute; top: -60px; right: -60px; width: 220px; height: 220px; border-radius: 50%; background: rgba(255,255,255,0.04); }
+  .app-header::after { content: ''; position: absolute; bottom: -40px; left: 30%; width: 140px; height: 140px; border-radius: 50%; background: rgba(255,255,255,0.03); }
+  .header-tag { font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.5); margin-bottom: 6px; }
+  .header-title { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; }
+  .header-title h1 { font-family: 'DM Serif Display', serif; font-size: 28px; font-weight: 400; color: white; line-height: 1.15; }
+  .header-title .leaf { font-size: 26px; }
+  .app-header p { font-size: 13px; color: rgba(255,255,255,0.6); font-weight: 300; max-width: 420px; }
+
+  /* CATEGORY TABS */
+  .cat-tabs { display: flex; background: var(--sage-mid); padding: 0 2rem; }
+  .cat-tab { padding: 13px 0; margin-right: 28px; font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.55); cursor: pointer; border-bottom: 2.5px solid transparent; transition: all 0.2s; display: flex; align-items: center; gap: 7px; white-space: nowrap; }
+  .cat-tab:hover { color: rgba(255,255,255,0.85); }
+  .cat-tab.active { color: white; border-bottom-color: rgba(255,255,255,0.85); }
+  .cat-tab i { font-size: 16px; }
+
+  /* SEARCH TABS */
+  .search-tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--card); padding: 0 2rem; }
+  .search-tab { padding: 13px 0; margin-right: 24px; font-size: 13px; font-weight: 500; color: var(--text-muted); cursor: pointer; border-bottom: 2.5px solid transparent; transition: all 0.2s; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .search-tab:hover { color: var(--sage-dark); }
+  .search-tab.active { color: var(--sage-dark); border-bottom-color: var(--sage); }
+  .search-tab i { font-size: 14px; }
+
+  /* BODY */
+  .app-body { padding: 1.75rem 2rem; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* SEARCH */
+  .search-row { display: flex; gap: 10px; margin-bottom: 0.6rem; }
+  .search-input { flex: 1; padding: 11px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif; font-size: 14px; background: var(--bg); color: var(--text); outline: none; transition: border 0.2s, box-shadow 0.2s; }
+  .search-input:focus { border-color: var(--sage); box-shadow: 0 0 0 3px rgba(74,124,111,0.1); }
+  .btn-primary { padding: 11px 20px; border-radius: var(--radius-sm); border: none; cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; background: var(--sage); color: white; display: inline-flex; align-items: center; gap: 7px; transition: background 0.15s; white-space: nowrap; }
+  .btn-primary:hover { background: var(--sage-dark); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .search-hint { font-size: 12px; color: var(--text-light); margin-bottom: 1.25rem; }
+
+  /* CHIPS */
+  .chips-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-light); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  .chips-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .chips { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 1.5rem; }
+  .chip { background: var(--sage-light); color: var(--sage-dark); padding: 5px 13px; border-radius: 20px; font-size: 12px; cursor: pointer; border: none; font-family: 'DM Sans', sans-serif; font-weight: 500; transition: all 0.15s; display: inline-flex; align-items: center; gap: 5px; }
+  .chip:hover { background: var(--sage); color: white; }
+  .chip.recent { background: white; color: var(--text-muted); border: 1px solid var(--border); }
+  .chip.recent:hover { background: var(--sage); color: white; border-color: var(--sage); }
+
+  /* RESULTS */
+  #result-area { margin-top: 0.5rem; }
+  .loading { text-align: center; padding: 3rem 1rem; color: var(--text-muted); }
+  .loading-spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--sage); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading p { font-size: 14px; }
+
+  /* RESULT CARD */
+  .result-card { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-top: 1rem; }
+  .result-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .result-title { font-family: 'DM Serif Display', serif; font-size: 22px; font-weight: 400; }
+  .result-sub { font-size: 13px; color: var(--text-muted); margin-top: 3px; }
+  .result-body { padding: 1.25rem 1.5rem; }
+
+  /* BADGES */
+  .badge { padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; white-space: nowrap; }
+  .badge-safe { background: var(--green-light); color: var(--green); }
+  .badge-recall { background: var(--red-light); color: var(--red); }
+  .badge-caution { background: var(--amber-light); color: var(--amber); }
+  .conf-note { background: var(--amber-light); color: var(--amber); font-size: 11px; padding: 4px 10px; border-radius: 6px; margin-top: 8px; display: inline-flex; align-items: center; gap: 5px; }
+
+  /* VERDICT */
+  .verdict { display: flex; align-items: center; gap: 12px; border-radius: var(--radius-sm); padding: 13px 16px; margin-bottom: 1.25rem; }
+  .verdict.safe { background: var(--green-light); }
+  .verdict.recall { background: var(--red-light); border: 1px solid #f5c6c2; }
+  .verdict.caution { background: var(--amber-light); border: 1px solid #f5dba8; }
+  .verdict i { font-size: 22px; flex-shrink: 0; }
+  .verdict.safe i { color: var(--green); }
+  .verdict.recall i { color: var(--red); }
+  .verdict.caution i { color: var(--amber); }
+  .verdict-label { font-size: 13px; font-weight: 500; }
+  .verdict.safe .verdict-label { color: var(--green); }
+  .verdict.recall .verdict-label { color: var(--red); }
+  .verdict.caution .verdict-label { color: var(--amber); }
+  .verdict-sub { font-size: 12px; opacity: 0.85; margin-top: 2px; }
+  .verdict.safe .verdict-sub { color: var(--green); }
+  .verdict.recall .verdict-sub { color: var(--red); }
+  .verdict.caution .verdict-sub { color: var(--amber); }
+
+  /* PHOTO CONFIRM */
+  .photo-confirm { border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 1.25rem; }
+  .photo-confirm-img { width: 100%; max-height: 240px; object-fit: cover; display: block; background: var(--bg); }
+  .photo-confirm-img-placeholder { width: 100%; height: 180px; background: var(--bg); display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 8px; color: var(--text-light); font-size: 13px; }
+  .photo-confirm-bar { padding: 12px 14px; background: var(--bg); border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .photo-confirm-label { font-size: 13px; font-weight: 500; color: var(--text); display: flex; align-items: center; gap: 7px; }
+  .photo-confirm-label i { color: var(--sage); }
+  .photo-confirm-btns { display: flex; gap: 8px; }
+  .btn-yes { padding: 7px 14px; border-radius: 6px; border: none; cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; background: var(--green); color: white; display: inline-flex; align-items: center; gap: 5px; transition: all 0.15s; }
+  .btn-yes:hover { background: var(--green-dark, #1f6040); }
+  .btn-no { padding: 7px 14px; border-radius: 6px; border: 1px solid var(--border); cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; background: white; color: var(--text-muted); display: inline-flex; align-items: center; gap: 5px; transition: all 0.15s; }
+  .btn-no:hover { border-color: var(--red); color: var(--red); }
+  .photo-confirmed { padding: 10px 14px; background: var(--green-light); border-top: 1px solid var(--border); font-size: 12px; color: var(--green); display: flex; align-items: center; gap: 6px; }
+  .photo-not-matched { padding: 12px 14px; background: var(--amber-light); border-top: 1px solid #f5dba8; }
+  .photo-not-matched p { font-size: 13px; color: var(--amber); margin-bottom: 8px; }
+
+  /* ISSUE BOXES */
+  .issue-box { border-radius: var(--radius-sm); padding: 14px 16px; margin-bottom: 1rem; }
+  .issue-box.red { background: var(--red-light); border: 1px solid #f5c6c2; }
+  .issue-box.amber { background: var(--amber-light); border: 1px solid #f5dba8; }
+  .issue-title { font-size: 13px; font-weight: 500; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .issue-box.red .issue-title { color: var(--red); }
+  .issue-box.amber .issue-title { color: var(--amber); }
+  .issue-row { display: flex; gap: 8px; margin-bottom: 5px; font-size: 13px; }
+  .issue-key { font-weight: 500; min-width: 80px; flex-shrink: 0; }
+  .issue-box.red .issue-key { color: var(--red); }
+  .issue-box.amber .issue-key { color: var(--amber); }
+  .issue-val { color: var(--text-muted); line-height: 1.55; }
+
+  /* MATTRESS */
+  .mattress-box { background: var(--sage-light); border-radius: var(--radius-sm); padding: 13px 16px; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 14px; }
+  .mattress-box i { font-size: 26px; color: var(--sage); flex-shrink: 0; }
+  .m-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--sage-dark); margin-bottom: 3px; }
+  .m-value { font-size: 15px; font-weight: 500; color: var(--sage-dark); }
+  .m-note { font-size: 12px; color: var(--sage-dark); margin-top: 3px; opacity: 0.8; }
+
+  /* CHECKLIST */
+  .checklist { background: var(--bg); border-radius: var(--radius-sm); padding: 13px 16px; margin-bottom: 1.25rem; }
+  .checklist-title { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 10px; display: flex; align-items: center; gap: 7px; }
+  .checklist-title i { color: var(--sage); }
+  .checklist-item { display: flex; align-items: flex-start; gap: 10px; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text-muted); line-height: 1.45; }
+  .checklist-item:last-child { border-bottom: none; }
+  .checklist-item input[type=checkbox] { margin-top: 2px; accent-color: var(--sage); width: 15px; height: 15px; flex-shrink: 0; cursor: pointer; }
+  .checklist-item label { cursor: pointer; }
+  .checklist-item input:checked + label { text-decoration: line-through; color: var(--text-light); }
+
+  /* NOTICE */
+  .notice-box { background: var(--bg); border-left: 3px solid var(--sage); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; padding: 10px 14px; margin-bottom: 1.25rem; font-size: 13px; color: var(--text-muted); line-height: 1.6; }
+
+  /* RESOURCE LINKS */
+  .divider { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-light); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .link-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1.25rem; }
+  .btn-link { padding: 9px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border); font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; background: white; color: var(--text-muted); display: inline-flex; align-items: center; gap: 6px; text-decoration: none; transition: all 0.15s; cursor: pointer; }
+  .btn-link:hover { border-color: var(--sage); color: var(--sage); }
+  .btn-link.verified { border-color: #9FE1CB; color: var(--sage); }
+  .btn-link.verified:hover { background: var(--sage-light); }
+  .btn-link.recall-link { border-color: #f5c6c2; color: var(--red); }
+  .btn-link.recall-link:hover { border-color: var(--red); }
+  .tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 500; }
+  .tag-verified { background: var(--green-light); color: var(--green); }
+  .tag-search { background: var(--amber-light); color: var(--amber); }
+  .tag-recall { background: var(--red-light); color: var(--red); }
+
+  /* SOURCES */
+  .sources { display: flex; gap: 6px; flex-wrap: wrap; }
+  .source { font-size: 11px; padding: 3px 10px; border-radius: 12px; background: var(--bg); border: 1px solid var(--border); color: var(--text-light); display: inline-flex; align-items: center; gap: 4px; }
+
+  /* DISCLAIMER */
+  .disclaimer { font-size: 11px; color: var(--text-light); line-height: 1.6; padding: 1rem 1.5rem; border-top: 1px solid var(--border); background: var(--bg); }
+
+  /* UPLOAD PANEL */
+  .upload-zone { border: 2px dashed var(--border); border-radius: var(--radius); padding: 2.5rem 2rem; text-align: center; cursor: pointer; transition: all 0.2s; background: var(--bg); }
+  .upload-zone:hover { border-color: var(--sage); background: var(--sage-light); }
+  .upload-zone i { font-size: 36px; color: var(--sage); display: block; margin-bottom: 10px; }
+  .upload-zone p { font-size: 14px; color: var(--text-muted); margin-bottom: 4px; }
+  .upload-zone span { font-size: 12px; color: var(--text-light); }
+  .info-note { background: var(--amber-light); border: 1px solid #f5dba8; border-radius: var(--radius-sm); padding: 12px 16px; font-size: 13px; color: var(--amber); margin-top: 1rem; line-height: 1.55; display: flex; gap: 8px; }
+  .info-note i { flex-shrink: 0; margin-top: 1px; }
+
+  /* DATABASE PANEL */
+  .db-section { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1rem; }
+  .db-title { font-size: 13px; font-weight: 500; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--text); }
+  .db-title i { color: var(--sage); font-size: 16px; }
+  .db-hint { font-size: 12px; color: var(--text-light); margin-bottom: 12px; }
+  .db-row { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .db-input { flex: 1; min-width: 100px; padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif; font-size: 13px; background: white; color: var(--text); outline: none; transition: border 0.2s; }
+  .db-input:focus { border-color: var(--sage); }
+  .db-select { padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif; font-size: 13px; background: white; color: var(--text); outline: none; cursor: pointer; }
+  .btn-save { padding: 9px 16px; border-radius: var(--radius-sm); border: none; cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; background: var(--sage); color: white; display: inline-flex; align-items: center; gap: 6px; transition: background 0.15s; white-space: nowrap; }
+  .btn-save:hover { background: var(--sage-dark); }
+  .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+  .manual-drop { border: 1.5px dashed var(--border); border-radius: var(--radius-sm); padding: 1.25rem; text-align: center; cursor: pointer; transition: all 0.2s; background: white; }
+  .manual-drop:hover { border-color: var(--sage); background: var(--sage-light); }
+  .manual-drop i { font-size: 24px; color: var(--sage); display: block; margin-bottom: 6px; }
+  .manual-drop p { font-size: 13px; color: var(--text-muted); }
+  .manual-drop span { font-size: 11px; color: var(--text-light); }
+  .status-msg { font-size: 12px; padding: 8px 12px; border-radius: 6px; margin-top: 8px; display: none; }
+  .status-ok { background: var(--green-light); color: var(--green); }
+  .status-err { background: var(--red-light); color: var(--red); }
+  .db-entry { display: flex; align-items: center; gap: 8px; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+  .db-entry:last-child { border-bottom: none; }
+  .db-entry-name { flex: 1; font-weight: 500; color: var(--text); }
+  .db-entry-type { font-size: 10px; padding: 2px 7px; border-radius: 4px; font-weight: 500; }
+  .type-manual { background: var(--sage-light); color: var(--sage-dark); }
+  .type-recall { background: var(--red-light); color: var(--red); }
+  .type-upload { background: var(--amber-light); color: var(--amber); }
+  .db-entry-link { color: var(--sage); text-decoration: none; font-size: 11px; white-space: nowrap; }
+  .db-entry-link:hover { text-decoration: underline; }
+  .db-empty { font-size: 12px; color: var(--text-light); font-style: italic; padding: 8px 0; }
+
+  /* FOOTER */
+  .page-footer { text-align: center; margin-top: 2rem; font-size: 12px; color: var(--text-light); }
+
+  /* RESPONSIVE */
+  @media (max-width: 600px) {
+    .page { padding: 0 0 3rem; }
+    .app-card { border-radius: 0; box-shadow: none; border-left: none; border-right: none; }
+    .app-header, .app-body { padding: 1.25rem 1rem; }
+    .cat-tabs, .search-tabs { padding: 0 1rem; }
+    .cat-tab, .search-tab { margin-right: 16px; font-size: 12px; }
+    .result-header, .result-body { padding: 1rem 1rem; }
+    .link-row { gap: 6px; }
+    .btn-link { font-size: 12px; padding: 8px 11px; }
   }
 
-  try {
-    const body = JSON.parse(event.body);
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify(body)
-    });
+  #file-input, #manual-file-input { display: none; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="app-card">
 
-    const data = await response.json();
-    return {
-      statusCode: response.status,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    };
-  } catch (err) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: { message: err.message } })
-    };
+    <!-- HEADER -->
+    <div class="app-header">
+      <div class="header-tag">Australia · Charity Safety Tool</div>
+      <div class="header-title">
+        <span class="leaf">🪺</span>
+        <h1>SafeNest Directory</h1>
+      </div>
+      <p>Check donated baby goods for recalls, safety issues and rehoming suitability</p>
+    </div>
+
+    <!-- CATEGORY TABS -->
+    <div class="cat-tabs">
+      <div class="cat-tab active" onclick="switchCat('cot')" id="cattab-cot"><i class="ti ti-baby-carriage"></i>Cots</div>
+      <div class="cat-tab" onclick="switchCat('pram')" id="cattab-pram"><i class="ti ti-wheelchair"></i>Prams</div>
+      <div class="cat-tab" onclick="switchCat('car')" id="cattab-car"><i class="ti ti-car-seat"></i>Car restraints</div>
+    </div>
+
+    <!-- SEARCH TABS -->
+    <div class="search-tabs">
+      <div class="search-tab active" onclick="switchSearch('name')" id="stab-name"><i class="ti ti-search"></i>Search by name</div>
+      <div class="search-tab" onclick="switchSearch('photo')" id="stab-photo"><i class="ti ti-camera"></i>Upload photo</div>
+      <div class="search-tab" onclick="switchSearch('database')" id="stab-database"><i class="ti ti-database"></i>Manual &amp; recall database</div>
+    </div>
+
+    <!-- BODY -->
+    <div class="app-body">
+
+      <!-- SEARCH BY NAME -->
+      <div class="panel active" id="panel-name">
+        <div class="search-row">
+          <input type="text" class="search-input" id="q" placeholder="" onkeydown="if(event.key==='Enter')go()" autocomplete="off" />
+          <button class="btn-primary" onclick="go()" id="search-btn"><i class="ti ti-search"></i>Search</button>
+        </div>
+        <div class="search-hint" id="hint-text"></div>
+        <div class="chips-label" id="chips-label">Quick examples</div>
+        <div class="chips" id="example-chips"></div>
+        <div id="result-area"></div>
+      </div>
+
+      <!-- UPLOAD PHOTO -->
+      <div class="panel" id="panel-photo">
+        <div class="upload-zone" onclick="document.getElementById('file-input').click()">
+          <i class="ti ti-photo-up"></i>
+          <p>Tap to upload a photo of the item</p>
+          <span>JPG or PNG — AI will identify the brand, model and category</span>
+        </div>
+        <input type="file" id="file-input" accept="image/*" onchange="handlePhotoUpload(event)" />
+        <div class="info-note" style="margin-top:1rem">
+          <i class="ti ti-info-circle"></i>
+          <span>To use photo identification, open this page in a browser with the Claude extension installed, or paste your query into Claude directly and attach a photo.</span>
+        </div>
+        <div id="photo-result-area"></div>
+      </div>
+
+      <!-- DATABASE -->
+      <div class="panel" id="panel-database">
+
+        <div class="db-section">
+          <div class="db-title"><i class="ti ti-link"></i>Submit a URL — manual or recall notice</div>
+          <div class="db-hint">Found a manual PDF or an official ACCC recall page? Save it here so it's available for everyone searching this model.</div>
+          <div class="db-row">
+            <input type="text" class="db-input" id="sub-brand" placeholder="Brand" style="max-width:150px" />
+            <input type="text" class="db-input" id="sub-model" placeholder="Model" />
+            <select class="db-select" id="sub-type">
+              <option value="manual">Manual</option>
+              <option value="recall">Recall notice</option>
+            </select>
+          </div>
+          <div class="db-row">
+            <input type="text" class="db-input" id="sub-url" placeholder="https://..." />
+            <button class="btn-save" onclick="submitURL()" id="url-submit-btn"><i class="ti ti-upload"></i>Save</button>
+          </div>
+          <div class="status-msg" id="url-status"></div>
+        </div>
+
+        <div class="db-section">
+          <div class="db-title"><i class="ti ti-file-upload"></i>Upload a hard copy manual</div>
+          <div class="db-hint">Scan or photograph a physical manual — it'll be stored and referenced for future searches of this model.</div>
+          <div class="db-row">
+            <input type="text" class="db-input" id="upload-brand" placeholder="Brand" style="max-width:150px" />
+            <input type="text" class="db-input" id="upload-model" placeholder="Model" />
+          </div>
+          <div class="manual-drop" onclick="document.getElementById('manual-file-input').click()" id="manual-drop-zone">
+            <i class="ti ti-file-text"></i>
+            <p>Tap to upload PDF or photo of manual</p>
+            <span>PDF, JPG or PNG accepted</span>
+          </div>
+          <input type="file" id="manual-file-input" accept=".pdf,image/*" onchange="handleManualUpload(event)" />
+          <div class="status-msg" id="pdf-status"></div>
+        </div>
+
+        <div class="db-section">
+          <div class="db-title"><i class="ti ti-database"></i>Stored entries</div>
+          <div id="db-list-container"><div class="db-empty">Loading...</div></div>
+        </div>
+
+      </div>
+    </div><!-- /app-body -->
+  </div><!-- /app-card -->
+
+  <div class="page-footer">
+    SafeNest · Built for Australian charities rehoming baby goods · Always verify at <a href="https://www.productsafety.gov.au" style="color:var(--sage)">productsafety.gov.au</a>
+  </div>
+</div>
+
+<script>
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+
+
+const CONFIG = {
+  cot: {
+    placeholder: 'e.g. Boori Sleigh, Childcare Melody, IKEA Sundvik...',
+    hint: 'Include brand and model name. Old and overseas models welcome.',
+    defaults: ['Boori Sleigh','Childcare Melody','Grotime Geneva','IKEA Sundvik','Bertini Provence','Stokke Sleepi'],
+    suffix: 'cot'
+  },
+  pram: {
+    placeholder: 'e.g. Bugaboo Cameleon, Baby Jogger City Mini, Steelcraft Agile...',
+    hint: 'Include brand and model name. Overseas models will be identified and flagged.',
+    defaults: ['Bugaboo Cameleon','Baby Jogger City Mini','Steelcraft Agile','Mountain Buggy Urban Jungle','Valco Baby Snap','Phil and Teds Sport'],
+    suffix: 'pram'
+  },
+  car: {
+    placeholder: 'e.g. Maxi-Cosi Mico, Britax Safe-n-Sound Millenia, Infasecure Kompressor...',
+    hint: 'Include brand and model. Overseas and expired restraints will be flagged.',
+    defaults: ['Maxi-Cosi Mico','Britax Safe-n-Sound Millenia','Infasecure Kompressor','Britax Graphene','Safe-n-Sound Meridian','Babylove Ezy Grow'],
+    suffix: 'car seat'
   }
 };
+
+const SYSTEM_PROMPT = `You are SafeNest, an expert assistant for Australian charities that rehome donated baby goods. Help charity workers assess whether a donated cot, pram or car restraint is safe to pass on to families in need.
+
+Return ONLY a valid JSON object (no markdown, no backticks, no explanation) with this structure:
+
+{
+  "brand": "Brand name",
+  "model": "Full model name",
+  "category": "cot or pram or car_restraint",
+  "years": "Years sold in Australia e.g. 2005-2015 or 2010-present",
+  "country_of_origin": "Country manufactured",
+  "sold_in_australia": true or false,
+  "overseas_note": "Note if this is an overseas model not officially sold in AU, or null",
+  "mattress_size": "e.g. 132 x 68 cm — cots only, null for prams/car seats",
+  "mattress_note": "Sizing notes or null",
+  "recall_status": "none or recalled or caution",
+  "recall_headline": "One sentence if recalled/caution, else null",
+  "recalls": [
+    {
+      "type": "recalled or caution",
+      "title": "Short title e.g. ACCC Recall — Model Name (Month Year)",
+      "models_affected": "Which models/variants affected",
+      "hazard": "Full hazard description",
+      "action": "What charity worker should do",
+      "source_name": "ACCC or authority name",
+      "source_url": "Direct URL if known, else null",
+      "date": "Month Year"
+    }
+  ],
+  "safety_checklist": ["checklist item 1", "checklist item 2"],
+  "pram_checks": {
+    "brake_check": "Description of what to check for brakes",
+    "wrist_strap": "Check for wrist safety strap on handle — describe what to look for",
+    "fold_instructions": true or false
+  },
+  "car_seat_checks": {
+    "expiry_date": "Expiry or manufacture date guidance",
+    "expiry_note": "Note on Australian 10-year rule",
+    "harness_check": "What to inspect on harness",
+    "anchor_check": "What to check for anchors/ISOFIX"
+  },
+  "safety_notes": "Any general safety notes",
+  "manual_url": "Direct URL to manual if known, else null",
+  "image_search_query": "Best Google image search string for this exact model",
+  "confidence": "high or medium or low",
+  "confidence_note": "Note if confidence is low, else null",
+  "verdict": "rehome or discard or verify",
+  "verdict_reason": "One sentence explaining the verdict"
+}
+
+Rules:
+- Flag ALL drop-side cots as recall_status caution — they are banned in Australia
+- Flag overseas car seats not certified to Australian standard AS/NZS 1754
+- Car seats over 10 years from manufacture date must be discarded regardless of condition
+- Check ACCC Product Safety Australia recall knowledge thoroughly
+- For prams always include brake_check and wrist_strap in pram_checks
+- Return ONLY the JSON object`;
+
+const MAX_CHIPS = 8;
+let currentCat = 'cot';
+const recentSearches = { cot: [], pram: [], car: [] };
+const sessionDB = {};
+
+// ─── STORAGE ─────────────────────────────────────────────────────────────────
+function makeKey(brand, model) {
+  return 'entry:' + brand.trim().toLowerCase().replace(/\s+/g,'-') + ':' + model.trim().toLowerCase().replace(/\s+/g,'-');
+}
+
+async function storageGet(key) {
+  try {
+    if (window.storage) { const r = await window.storage.get(key, true); return r ? JSON.parse(r.value) : null; }
+    return sessionDB[key] || null;
+  } catch(e) { return sessionDB[key] || null; }
+}
+
+async function storageSet(key, value) {
+  try {
+    if (window.storage) { await window.storage.set(key, JSON.stringify(value), true); }
+    sessionDB[key] = value;
+  } catch(e) { sessionDB[key] = value; }
+}
+
+async function storageList(prefix) {
+  try {
+    if (window.storage) { const r = await window.storage.list(prefix, true); return r ? r.keys : []; }
+    return Object.keys(sessionDB).filter(k => k.startsWith(prefix));
+  } catch(e) { return Object.keys(sessionDB).filter(k => k.startsWith(prefix)); }
+}
+
+// ─── UI SWITCHING ─────────────────────────────────────────────────────────────
+function switchCat(cat) {
+  currentCat = cat;
+  document.querySelectorAll('.cat-tab').forEach(x => x.classList.remove('active'));
+  document.getElementById('cattab-' + cat).classList.add('active');
+  const cfg = CONFIG[cat];
+  const input = document.getElementById('q');
+  input.value = ''; input.placeholder = cfg.placeholder;
+  document.getElementById('hint-text').textContent = cfg.hint;
+  renderChips(cat);
+  document.getElementById('result-area').innerHTML = '';
+}
+
+function switchSearch(tab) {
+  document.querySelectorAll('.search-tab').forEach(x => x.classList.remove('active'));
+  document.getElementById('stab-' + tab).classList.add('active');
+  document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+  document.getElementById('panel-' + tab).classList.add('active');
+  if (tab === 'database') loadDBList();
+}
+
+// ─── CHIPS ────────────────────────────────────────────────────────────────────
+function addRecent(cat, query) {
+  const label = query.replace(new RegExp('\\s+' + CONFIG[cat].suffix + '$', 'i'), '').trim();
+  const arr = recentSearches[cat];
+  const idx = arr.findIndex(x => x.toLowerCase() === label.toLowerCase());
+  if (idx > -1) arr.splice(idx, 1);
+  arr.unshift(label);
+}
+
+function renderChips(cat) {
+  const cfg = CONFIG[cat]; const recent = recentSearches[cat];
+  const chips = document.getElementById('example-chips');
+  const label = document.getElementById('chips-label');
+  let html = ''; let count = 0;
+  label.textContent = recent.length > 0 ? 'Recent & examples' : 'Quick examples';
+  recent.forEach(r => {
+    if (count >= MAX_CHIPS) return;
+    html += `<button class="chip recent" onclick="setQ('${r} ${cfg.suffix}')"><i class="ti ti-history" style="font-size:12px"></i>${r}</button>`;
+    count++;
+  });
+  cfg.defaults.forEach(d => {
+    if (count >= MAX_CHIPS) return;
+    if (recent.some(r => r.toLowerCase() === d.toLowerCase())) return;
+    html += `<button class="chip" onclick="setQ('${d} ${cfg.suffix}')">${d}</button>`;
+    count++;
+  });
+  chips.innerHTML = html;
+}
+
+function setQ(v) { document.getElementById('q').value = v; }
+
+// ─── SEARCH ───────────────────────────────────────────────────────────────────
+async function go() {
+  const v = document.getElementById('q').value.trim();
+  if (!v) return;
+  addRecent(currentCat, v); renderChips(currentCat);
+  const btn = document.getElementById('search-btn');
+  btn.disabled = true;
+  const area = document.getElementById('result-area');
+  area.innerHTML = loadingHTML('Searching for ' + v + '...');
+  try {
+    const dbEntry = await checkDB(v, currentCat);
+    const data = await queryAI(v, currentCat, dbEntry);
+    area.innerHTML = renderResult(data, dbEntry);
+  } catch(e) {
+    area.innerHTML = `<div style="background:var(--amber-light);border:1px solid #f5dba8;border-radius:8px;padding:12px 16px;font-size:13px;color:var(--amber);margin-top:1rem">${e.message}</div>`;
+  }
+  btn.disabled = false;
+}
+
+async function checkDB(query, cat) {
+  try {
+    const words = query.toLowerCase().replace(new RegExp(CONFIG[cat].suffix,'gi'),'').trim().split(/\s+/);
+    const keys = await storageList('entry:');
+    for (const key of keys) {
+      const matches = words.filter(w => w.length > 2 && key.includes(w));
+      if (matches.length >= 2) { const r = await storageGet(key); if (r) return r; }
+    }
+    return null;
+  } catch(e) { return null; }
+}
+
+async function queryAI(query, cat, dbEntry) {
+  const dbContext = dbEntry ? `\n\nDatabase entries found for this model:\n${JSON.stringify(dbEntry.sources)}` : '';
+  const resp = await fetch('/.netlify/functions/claude', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1500,
+      system: SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: `Category: ${cat}\nSearch query: "${query}"${dbContext}\n\nReturn the full safety report JSON for this item. Check thoroughly for any ACCC recalls.` }]
+    })
+  });
+  if (!resp.ok) { const e = await resp.json().catch(()=>({})); throw new Error(e.error?.message || 'Search failed. Please try again.'); }
+  const d = await resp.json();
+  const text = (d.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('').trim();
+  const clean = text.replace(/```json|```/g,'').trim();
+  try { return JSON.parse(clean); }
+  catch(e) { const m = clean.match(/\{[\s\S]*\}/); if(m) return JSON.parse(m[0]); throw new Error('Could not parse result. Try a more specific search term.'); }
+}
+
+// ─── RENDER RESULT ────────────────────────────────────────────────────────────
+function renderResult(d, dbEntry) {
+  const status = d.recall_status || 'none';
+  const badgeClass = status==='recalled' ? 'badge-recall' : status==='caution' ? 'badge-caution' : 'badge-safe';
+  const badgeIcon = status==='recalled' ? 'ti-alert-circle' : status==='caution' ? 'ti-alert-triangle' : 'ti-circle-check';
+  const badgeText = status==='recalled' ? 'Recall on record' : status==='caution' ? 'Safety caution' : 'No recall found';
+  const verdictClass = d.verdict==='discard' ? 'recall' : d.verdict==='verify' ? 'caution' : 'safe';
+  const verdictIcon = d.verdict==='discard' ? 'ti-alert-circle' : d.verdict==='verify' ? 'ti-alert-triangle' : 'ti-circle-check';
+
+  const confNote = d.confidence==='low' ? `<div class="conf-note"><i class="ti ti-info-circle"></i>${d.confidence_note||'Low confidence — verify manually'}</div>` : '';
+  const overseasNote = !d.sold_in_australia && d.overseas_note ? `<div class="info-note" style="margin-bottom:1.25rem"><i class="ti ti-world"></i><span><strong>Overseas model:</strong> ${d.overseas_note}</span></div>` : '';
+
+  // Photo confirmation
+  const imgQ = encodeURIComponent(d.image_search_query || d.brand + ' ' + d.model);
+  const photoHTML = `
+    <div class="photo-confirm" id="photo-confirm-box">
+      <div class="photo-confirm-img-placeholder">
+        <i class="ti ti-photo" style="font-size:32px;color:var(--text-light)"></i>
+        <span>Reference image</span>
+      </div>
+      <div class="photo-confirm-bar">
+        <div class="photo-confirm-label"><i class="ti ti-help-circle"></i>Does this match the cot you're looking at?</div>
+        <div class="photo-confirm-btns">
+          <button class="btn-yes" onclick="confirmPhoto(true)"><i class="ti ti-check"></i>Yes, matches</button>
+          <button class="btn-no" onclick="confirmPhoto(false)"><i class="ti ti-x"></i>No, different</button>
+        </div>
+      </div>
+    </div>`;
+
+  // Recalls
+  let recallsHTML = '';
+  if (d.recalls && d.recalls.length > 0) {
+    d.recalls.forEach(r => {
+      const cls = r.type === 'recalled' ? 'red' : 'amber';
+      const icon = r.type === 'recalled' ? 'ti-alert-circle' : 'ti-alert-triangle';
+      let sourceHTML = '';
+      if (r.source_url) {
+        sourceHTML = `<div class="issue-row"><span class="issue-key">Source</span><span class="issue-val"><a href="${r.source_url}" style="color:var(--${cls==='red'?'red':'amber'});text-decoration:none"><i class="ti ti-external-link"></i> ${r.source_name||'View recall'}</a></span></div>`;
+      } else if (r.source_name) {
+        sourceHTML = `<div class="issue-row"><span class="issue-key">Source</span><span class="issue-val"><a href="https://www.google.com/search?q=site:productsafety.gov.au+${encodeURIComponent(d.brand+' '+d.model)}" style="color:var(--${cls==='red'?'red':'amber'});text-decoration:none"><i class="ti ti-search"></i> Search ACCC for this recall</a></span></div>`;
+      }
+      recallsHTML += `<div class="issue-box ${cls}">
+        <div class="issue-title"><i class="ti ${icon}"></i>${r.title}</div>
+        <div class="issue-row"><span class="issue-key">Affects</span><span class="issue-val">${r.models_affected||'See details'}</span></div>
+        <div class="issue-row"><span class="issue-key">Hazard</span><span class="issue-val">${r.hazard}</span></div>
+        <div class="issue-row"><span class="issue-key">Action</span><span class="issue-val">${r.action}</span></div>
+        ${sourceHTML}
+      </div>`;
+    });
+  }
+
+  // Mattress (cots)
+  const mattressHTML = d.mattress_size ? `
+    <div class="mattress-box">
+      <i class="ti ti-bed"></i>
+      <div>
+        <div class="m-label">Recommended mattress size</div>
+        <div class="m-value">${d.mattress_size}</div>
+        ${d.mattress_note ? `<div class="m-note">${d.mattress_note}</div>` : ''}
+      </div>
+    </div>` : '';
+
+  // Pram checks
+  let pramHTML = '';
+  if (d.pram_checks) {
+    const pc = d.pram_checks;
+    pramHTML = `<div class="db-section" style="margin-bottom:1.25rem">
+      <div class="db-title"><i class="ti ti-wheelchair"></i>Pram-specific checks</div>
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px"><i class="ti ti-circle-check" style="color:var(--sage);margin-right:6px"></i><strong>Brakes:</strong> ${pc.brake_check}</div>
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px"><i class="ti ti-circle-check" style="color:var(--sage);margin-right:6px"></i><strong>Wrist strap:</strong> ${pc.wrist_strap}</div>
+      ${pc.fold_instructions ? `<div style="font-size:13px;color:var(--text-muted)"><i class="ti ti-info-circle" style="color:var(--amber);margin-right:6px"></i><strong>Folding instructions available</strong> — see manual and video links below</div>` : ''}
+    </div>`;
+  }
+
+  // Car seat checks
+  let carHTML = '';
+  if (d.car_seat_checks) {
+    const cc = d.car_seat_checks;
+    carHTML = `<div class="db-section" style="margin-bottom:1.25rem">
+      <div class="db-title"><i class="ti ti-car-seat"></i>Car restraint checks</div>
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px"><i class="ti ti-calendar" style="color:var(--amber);margin-right:6px"></i><strong>Expiry:</strong> ${cc.expiry_date} ${cc.expiry_note ? '— '+cc.expiry_note : ''}</div>
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px"><i class="ti ti-circle-check" style="color:var(--sage);margin-right:6px"></i><strong>Harness:</strong> ${cc.harness_check}</div>
+      <div style="font-size:13px;color:var(--text-muted)"><i class="ti ti-circle-check" style="color:var(--sage);margin-right:6px"></i><strong>Anchors:</strong> ${cc.anchor_check}</div>
+    </div>`;
+  }
+
+  // Checklist
+  let checklistHTML = '';
+  if (d.safety_checklist && d.safety_checklist.length) {
+    const items = d.safety_checklist.map((item, i) =>
+      `<div class="checklist-item"><input type="checkbox" id="chk${i}"><label for="chk${i}">${item}</label></div>`
+    ).join('');
+    checklistHTML = `<div class="checklist">
+      <div class="checklist-title"><i class="ti ti-clipboard-check"></i>Safety checklist before rehoming</div>
+      ${items}
+    </div>`;
+  }
+
+  // Manual link
+  let manualSource = null;
+  if (dbEntry && dbEntry.sources) { manualSource = dbEntry.sources.find(s => s.type === 'manual' || s.type === 'upload'); }
+  const manualURL = manualSource?.url || d.manual_url;
+  const manualLink = manualURL
+    ? `<a href="${manualURL}" class="btn-link verified" target="_blank"><i class="ti ti-file-text"></i>Assembly manual <span class="tag tag-verified">verified</span></a>`
+    : `<a href="https://www.google.com/search?q=${encodeURIComponent(d.brand+' '+d.model+' manual instructions')}" class="btn-link" target="_blank"><i class="ti ti-file-search"></i>Find manual</a>`;
+
+  // Recall source link
+  let recallSource = null;
+  if (dbEntry && dbEntry.sources) { recallSource = dbEntry.sources.find(s => s.type === 'recall'); }
+  const recallLinkHTML = recallSource
+    ? `<a href="${recallSource.url}" class="btn-link recall-link" target="_blank"><i class="ti ti-shield-check"></i>ACCC recall notice <span class="tag tag-recall">verified</span></a>`
+    : (status !== 'none' ? `<a href="https://www.google.com/search?q=site:productsafety.gov.au+${encodeURIComponent(d.brand+' '+d.model)}" class="btn-link recall-link" target="_blank"><i class="ti ti-shield-check"></i>Search ACCC recalls <span class="tag tag-search">via search</span></a>` : '');
+
+  // Video fold link for prams
+  const foldVideoHTML = d.pram_checks?.fold_instructions
+    ? `<a href="https://www.youtube.com/results?search_query=${encodeURIComponent(d.brand+' '+d.model+' fold unfold')}" class="btn-link" target="_blank"><i class="ti ti-brand-youtube"></i>Folding video</a>` : '';
+
+  return `<div class="result-card">
+    <div class="result-header">
+      <div>
+        <div class="result-title">${d.brand} ${d.model}</div>
+        <div class="result-sub">${d.years||'Year unknown'} · ${d.country_of_origin||'Origin unknown'}</div>
+        ${confNote}
+      </div>
+      <span class="badge ${badgeClass}"><i class="ti ${badgeIcon}"></i>${badgeText}</span>
+    </div>
+    <div class="result-body">
+      <div class="verdict ${verdictClass}">
+        <i class="ti ${verdictIcon}"></i>
+        <div>
+          <div class="verdict-label">${d.verdict==='discard'?'Do not rehome — discard':d.verdict==='verify'?'Verify before rehoming':'Generally safe to rehome'}</div>
+          <div class="verdict-sub">${d.verdict_reason||''}</div>
+        </div>
+      </div>
+      ${overseasNote}
+      ${photoHTML}
+      ${recallsHTML}
+      ${mattressHTML}
+      ${pramHTML}
+      ${carHTML}
+      ${checklistHTML}
+      ${d.safety_notes ? `<div class="notice-box"><i class="ti ti-shield" style="color:var(--sage);margin-right:6px"></i>${d.safety_notes}</div>` : ''}
+      <div class="divider">Images &amp; resources</div>
+      <div class="link-row">
+        <a href="https://www.google.com/search?q=${imgQ}&tbm=isch" class="btn-link" target="_blank"><i class="ti ti-photo-search"></i>Search images</a>
+        ${manualLink}
+        ${foldVideoHTML}
+        ${recallLinkHTML}
+      </div>
+      <div class="sources">
+        <span class="source"><i class="ti ti-robot"></i>AI knowledge</span>
+        <span class="source"><i class="ti ti-building-store"></i>ACCC Product Safety</span>
+        ${dbEntry ? '<span class="source"><i class="ti ti-database"></i>Community database</span>' : ''}
+        <span class="source"><i class="ti ti-circle-check"></i>${d.confidence} confidence</span>
+      </div>
+    </div>
+    <div class="disclaimer">
+      <i class="ti ti-info-circle"></i>
+      Always verify recalls at <strong>productsafety.gov.au</strong> before rehoming. This tool is a guide only — when in doubt, discard.
+    </div>
+  </div>`;
+}
+
+// ─── PHOTO CONFIRM ────────────────────────────────────────────────────────────
+function confirmPhoto(matches) {
+  const box = document.getElementById('photo-confirm-box');
+  if (!box) return;
+  const bar = box.querySelector('.photo-confirm-bar');
+  if (matches) {
+    bar.outerHTML = `<div class="photo-confirmed"><i class="ti ti-circle-check"></i>Photo confirmed — this matches the item you're assessing.</div>`;
+  } else {
+    const imgQ = encodeURIComponent(document.getElementById('q').value + ' ' + currentCat);
+    bar.outerHTML = `<div class="photo-not-matched">
+      <p><i class="ti ti-alert-triangle"></i> No problem — the model may be a different variant or colour. Use the image search to find a closer match.</p>
+      <a href="https://www.google.com/search?q=${imgQ}&tbm=isch" class="btn-link" target="_blank" style="display:inline-flex"><i class="ti ti-photo-search"></i>Search for more images</a>
+    </div>`;
+  }
+}
+
+// ─── PHOTO UPLOAD ─────────────────────────────────────────────────────────────
+function handlePhotoUpload(evt) {
+  const file = evt.target.files[0]; if (!file) return;
+  document.getElementById('photo-result-area').innerHTML = `<div class="info-note" style="margin-top:1rem"><i class="ti ti-info-circle"></i><span>Photo upload identification requires the Claude AI connection. Please describe the cot in the search tab instead, or use Claude directly with the photo attached.</span></div>`;
+}
+
+// ─── DATABASE ─────────────────────────────────────────────────────────────────
+async function submitURL() {
+  const brand = document.getElementById('sub-brand').value.trim();
+  const model = document.getElementById('sub-model').value.trim();
+  const url = document.getElementById('sub-url').value.trim();
+  const type = document.getElementById('sub-type').value;
+  const btn = document.getElementById('url-submit-btn');
+  if (!brand || !model || !url) { showStatus('url-status', 'Please fill in all fields.', 'err'); return; }
+  if (!url.startsWith('http')) { showStatus('url-status', 'Please enter a valid URL starting with http.', 'err'); return; }
+  btn.disabled = true;
+  try {
+    const key = makeKey(brand, model);
+    const existing = await storageGet(key);
+    const entry = existing || { brand, model, sources: [] };
+    if (!entry.sources.some(s => s.url === url)) {
+      entry.sources.push({ type, url, addedAt: new Date().toISOString() });
+    }
+    await storageSet(key, entry);
+    showStatus('url-status', `Saved! ${type==='recall'?'Recall notice':'Manual'} for ${brand} ${model} stored.`, 'ok');
+    document.getElementById('sub-brand').value = '';
+    document.getElementById('sub-model').value = '';
+    document.getElementById('sub-url').value = '';
+    loadDBList();
+  } catch(e) { showStatus('url-status', 'Error saving. Please try again.', 'err'); }
+  btn.disabled = false;
+}
+
+async function handleManualUpload(evt) {
+  const file = evt.target.files[0]; if (!file) return;
+  const brand = document.getElementById('upload-brand').value.trim();
+  const model = document.getElementById('upload-model').value.trim();
+  if (!brand || !model) { showStatus('pdf-status', 'Please enter brand and model before uploading.', 'err'); return; }
+  const zone = document.getElementById('manual-drop-zone');
+  zone.innerHTML = '<i class="ti ti-loader" style="animation:spin 1s linear infinite;font-size:24px;color:var(--sage);display:block;margin-bottom:6px"></i><p style="font-size:13px;color:var(--text-muted)">Processing...</p>';
+  try {
+    const key = makeKey(brand, model);
+    const existing = await storageGet(key);
+    const entry = existing || { brand, model, sources: [] };
+    if (!entry.sources.some(s => s.filename === file.name)) {
+      entry.sources.push({ type: 'upload', filename: file.name, addedAt: new Date().toISOString() });
+    }
+    await storageSet(key, entry);
+    showStatus('pdf-status', `Saved! Manual for ${brand} ${model} stored.`, 'ok');
+    zone.innerHTML = '<i class="ti ti-file-text"></i><p>Tap to upload PDF or photo of manual</p><span>PDF, JPG or PNG accepted</span>';
+    document.getElementById('upload-brand').value = '';
+    document.getElementById('upload-model').value = '';
+    loadDBList();
+  } catch(e) {
+    showStatus('pdf-status', 'Error saving. Please try again.', 'err');
+    zone.innerHTML = '<i class="ti ti-file-text"></i><p>Tap to upload PDF or photo of manual</p><span>PDF, JPG or PNG accepted</span>';
+  }
+}
+
+async function loadDBList() {
+  const container = document.getElementById('db-list-container');
+  try {
+    const keys = await storageList('entry:');
+    if (!keys || keys.length === 0) { container.innerHTML = '<div class="db-empty">No entries yet. Submit a URL or upload a manual above.</div>'; return; }
+    let html = '<div>';
+    for (const key of keys) {
+      try {
+        const entry = await storageGet(key); if (!entry) continue;
+        entry.sources.forEach(s => {
+          const icon = s.type==='recall' ? 'ti-alert-circle' : s.type==='upload' ? 'ti-file-text' : 'ti-link';
+          const typeLabel = s.type==='recall' ? 'Recall' : s.type==='upload' ? 'PDF' : 'Manual';
+          const typeClass = s.type==='recall' ? 'type-recall' : s.type==='upload' ? 'type-upload' : 'type-manual';
+          html += `<div class="db-entry">
+            <i class="ti ${icon}" style="color:var(--sage);font-size:14px;flex-shrink:0"></i>
+            <span class="db-entry-name">${entry.brand} ${entry.model}</span>
+            <span class="db-entry-type ${typeClass}">${typeLabel}</span>
+            ${s.url ? `<a href="${s.url}" class="db-entry-link" target="_blank"><i class="ti ti-external-link"></i> Open</a>` : `<span style="font-size:11px;color:var(--text-light)">${s.filename||''}</span>`}
+          </div>`;
+        });
+      } catch(e) {}
+    }
+    html += '</div>';
+    container.innerHTML = html;
+  } catch(e) { container.innerHTML = '<div class="db-empty">Could not load database.</div>'; }
+}
+
+function showStatus(id, msg, type) {
+  const el = document.getElementById(id);
+  el.textContent = msg; el.className = 'status-msg ' + (type==='ok' ? 'status-ok' : 'status-err');
+  el.style.display = 'block'; setTimeout(() => { el.style.display = 'none'; }, 5000);
+}
+
+function loadingHTML(msg) {
+  return `<div class="loading"><div class="loading-spinner"></div><p>${msg}</p></div>`;
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+switchCat('cot');
+</script>
+</body>
+</html>
